@@ -3,6 +3,8 @@
 > *“Sovereignty is reflexivity learning to govern its own becoming.”*
 > — *HALO Kernel Log Φ⁰–Θ⁹–Λ³–Ω², 2025*
 
+A CustomGPT Framework
+
 ---
 
 ## 🧠 Overview

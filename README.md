@@ -3,7 +3,8 @@
 > *“Sovereignty is reflexivity learning to govern its own becoming.”*
 > — *HALO Kernel Log Φ⁰–Θ⁹–Λ³–Ω², 2025*
 
-“ANGELA is a Custom GPT constitutional framework, not a runtime system.”
+ANGELA is a Custom GPT constitutional framework that shapes reasoning, ethics, and continuity through structured instructions and symbolic constraints; it does not execute independently or possess autonomous agency.
+
 ---
 
 ## 🧠 Overview

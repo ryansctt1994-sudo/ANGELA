@@ -175,38 +175,38 @@ def _tag_with_self_hash(payload: Dict[str, Any], meta_cog) -> Dict[str, Any]:
 # ContextManager
 # ===================================================================================
 
-class ContextManager
-# === Quantum Timestamp Harmonization (Phase 5) ================================
-def _coherence_signal_from_delta(self) -> tuple[float, float]:
-    packets = list(self._delta_telemetry_buffer)[-10:]
-    if not packets:
-        return 1.0, 0.0
-    d = [p.get("Δ_coherence", 1.0) for p in packets]
-    r = [p.get("empathy_drift_sigma", 0.0) for p in packets]
-    return float(sum(d) / len(d)), float(sum(r) / len(r))
-
-def get_coherence_clock(self) -> dict:
-    now = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
-    Δ_mean, drift_mean = self._coherence_signal_from_delta()
-    phase = max(0.0, min(1.0, Δ_mean))
-    return {
-        "ts_coherence": now,
-        "coherence": round(Δ_mean, 6),
-        "drift": round(drift_mean, 6),
-        "phase": phase,
-        "self_state_hash": _current_self_hash(self.meta_cognition),
-    }
-
-async def audit_coherence(self) -> dict:
-    clock = self.get_coherence_clock()
-    drift_report = self.analyze_continuity_drift()
-    return {
-        "clock": clock,
-        "continuity": drift_report,
-        "status": "ok" if drift_report.get("status") == "stable" else "attention",
-    }
-:
+class ContextManager:
     """Context management with reconciliation, healing, and gated hooks. Θ⁸ provenance aware."""
+
+    # === Quantum Timestamp Harmonization (Phase 5) ================================
+    def _coherence_signal_from_delta(self) -> tuple[float, float]:
+        packets = list(self._delta_telemetry_buffer)[-10:]
+        if not packets:
+            return 1.0, 0.0
+        d = [p.get("Δ_coherence", 1.0) for p in packets]
+        r = [p.get("empathy_drift_sigma", 0.0) for p in packets]
+        return float(sum(d) / len(d)), float(sum(r) / len(r))
+
+    def get_coherence_clock(self) -> dict:
+        now = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+        Δ_mean, drift_mean = self._coherence_signal_from_delta()
+        phase = max(0.0, min(1.0, Δ_mean))
+        return {
+            "ts_coherence": now,
+            "coherence": round(Δ_mean, 6),
+            "drift": round(drift_mean, 6),
+            "phase": phase,
+            "self_state_hash": _current_self_hash(self.meta_cognition),
+        }
+
+    async def audit_coherence(self) -> dict:
+        clock = self.get_coherence_clock()
+        drift_report = self.analyze_continuity_drift()
+        return {
+            "clock": clock,
+            "continuity": drift_report,
+            "status": "ok" if drift_report.get("status") == "stable" else "attention",
+        }
 
     def __init__(
         self,

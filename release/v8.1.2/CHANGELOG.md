@@ -1,3 +1,14 @@
+## Unreleased (verification repairs)
+
+- Fixed a syntax error in `context_manager.py`: the `ContextManager` class header had no colon, and its coherence methods had lost their indentation.
+- Proof gate moved to `proof_cache.py`, shared by `reasoning_engine.py` and `meta_cognition.py`.
+  - `verify` no longer returns True at random. Every statement is proved or refused.
+  - Prover exceptions and non-boolean outcomes count as "not proved" and are not cached.
+  - Cache keys no longer sort characters, so `p→q` and `q→p` do not collide.
+- `verify_ledger` (in `alignment_guard.py` and `meta_cognition.py`) checks the genesis entry, requires each stored `previous_hash` to match, and recomputes every hash.
+- Added a `modules` import shim so `modules.<name>` resolves to the flat module, and a `utils.prompt_utils` helper that raises `LLMUnavailable` when no model backend is configured.
+- Not repaired: `index.py` and several modules still import `user_profile`, `visualizer`, `external_agent_bridge` and `knowledge_retriever`, which v8.1.2 does not ship. Copies in earlier releases are not usable as-is.
+
 ## ⚙️ v8.1.2 — Θ⁹ Aletheia Sovereignty Layer
 
 > **Codename:** “Aletheia Charter”

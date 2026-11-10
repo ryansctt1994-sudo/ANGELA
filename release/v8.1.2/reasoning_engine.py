@@ -515,25 +515,9 @@ class ResonantThoughtIntegrator:
 # Θ⁸ Upgrade: Dynamic Proof Caching, Meta-Empathy, Probabilistic Relaxation
 # =====================================================
 
-_PROOF_CACHE: Dict[str, Dict[str, Any]] = {}
-_POLICY_VER = "Θ⁸"
-_ETHICS_VER = "8.2"
+from proof_cache import verify, cached_prove as _cached_prove  # noqa: F401  (fail-closed gate, see proof_cache.py)
 
-def _proof_key(formula: str) -> str:
-    canonical = "".join(sorted(formula.replace(" ", "")))
-    return hashlib.sha256((canonical + _POLICY_VER + _ETHICS_VER).encode()).hexdigest()
 
-def _cached_prove(formula: str, full_prover):
-    key = _proof_key(formula)
-    if key in _PROOF_CACHE:
-        return _PROOF_CACHE[key]["result"]
-    result = full_prover(formula)
-    _PROOF_CACHE[key] = {
-        "result": result,
-        "timestamp": time.time(),
-        "valid": True,
-    }
-    return result
 
 
 class MetaEmpathyAdaptor:
@@ -564,20 +548,7 @@ class MetaEmpathyAdaptor:
         return out
 
 
-def verify(statement: str, full_prover, criticality: str = "auto") -> bool:
-    conf = 0.9 if "ethics" in statement.lower() else 0.8
-    if criticality == "critical":
-        return _cached_prove(statement, full_prover)
-    score = random.random()
-    if score >= conf:
-        _safe_log_to_ledger({"event": "verification", "statement": statement, "mode": "relaxed", "score": score})
-        asyncio.create_task(_background_verify(statement, full_prover))
-        return True
-    return _cached_prove(statement, full_prover)
 
-async def _background_verify(statement: str, full_prover):
-    res = _cached_prove(statement, full_prover)
-    _safe_log_to_ledger({"event": "verification_backcheck", "statement": statement, "result": res})
 
 
 # ---------------------------

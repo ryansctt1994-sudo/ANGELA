@@ -1,0 +1,23 @@
+name: Kernel tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  v8-1-2:
+    name: v8.1.2 regression tests
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: release/v8.1.2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest numpy networkx aiohttp filelock
+      - run: python -m pytest -q

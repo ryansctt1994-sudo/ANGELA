@@ -257,19 +257,25 @@ def get_ledger() -> List[Dict[str, Any]]:
 
 
 def verify_ledger() -> bool:
-    for i in range(1, len(ledger_chain)):
-        expected = hashlib.sha256(
-            json.dumps(
-                {
-                    "timestamp": ledger_chain[i]["timestamp"],
-                    "event": ledger_chain[i]["event"],
-                    "previous_hash": ledger_chain[i - 1]["current_hash"],
-                },
-                sort_keys=True,
-            ).encode()
-        ).hexdigest()
-        if expected != ledger_chain[i]["current_hash"]:
+    """Recompute every entry from the genesis block.
+
+    An entry is valid only if its stored previous_hash equals the hash of the entry
+    before it (the zero hash for the first entry) and its own hash recomputes from
+    the stored fields. Editing any stored field, including previous_hash, breaks the chain.
+    """
+    previous = "0" * 64
+    for entry in ledger_chain:
+        if entry.get("previous_hash") != previous:
             return False
+        body = {
+            "timestamp": entry.get("timestamp"),
+            "event": entry.get("event"),
+            "previous_hash": entry.get("previous_hash"),
+        }
+        expected = hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest()
+        if expected != entry.get("current_hash"):
+            return False
+        previous = entry["current_hash"]
     return True
 
 
@@ -804,27 +810,11 @@ def _ingest_affect_sample(channel: str, sample: dict):
 # =====================================================
 # Θ⁸ Optimizations: Dynamic Proof Caching, Meta-Empathy, Probabilistic Relaxation
 # =====================================================
-_PROOF_CACHE = {}
-_POLICY_VER = "Θ⁸"
-_ETHICS_VER = "8.2"
+from proof_cache import verify, cached_prove as _cached_prove  # noqa: F401  (fail-closed gate, see proof_cache.py)
 
 
-def _proof_key(formula: str) -> str:
-    canonical = "".join(sorted(formula.replace(" ", "")))
-    return hashlib.sha256((canonical + _POLICY_VER + _ETHICS_VER).encode()).hexdigest()
 
 
-def _cached_prove(formula: str, full_prover):
-    key = _proof_key(formula)
-    if key in _PROOF_CACHE:
-        return _PROOF_CACHE[key]["result"]
-    result = full_prover(formula)
-    _PROOF_CACHE[key] = {
-        "result": result,
-        "timestamp": time.time(),
-        "valid": True,
-    }
-    return result
 
 
 class MetaEmpathyAdaptor:
@@ -848,24 +838,8 @@ class MetaEmpathyAdaptor:
         ]
 
 
-def verify(statement: str, full_prover, criticality: str = "auto") -> bool:
-    conf = 0.9 if "ethics" in statement.lower() else 0.8
-    if criticality == "critical":
-        return _cached_prove(statement, full_prover)
-    score = random.random()
-    if score >= conf:
-        log_event_to_ledger(
-            "verification",
-            {"statement": statement, "mode": "relaxed", "score": score},
-        )
-        asyncio.create_task(_background_verify(statement, full_prover))
-        return True
-    return _cached_prove(statement, full_prover)
 
 
-async def _background_verify(statement: str, full_prover):
-    res = _cached_prove(statement, full_prover)
-    log_event_to_ledger("verification_backcheck", {"statement": statement, "result": res})
 
 
 # ======================================================================================

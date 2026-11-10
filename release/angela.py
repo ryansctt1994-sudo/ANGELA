@@ -79,21 +79,25 @@ def get_ledger() -> List[Dict[str, Any]]:
 
 
 def verify_ledger() -> bool:
-    """Verify integrity of the entire ledger chain."""
-    for i in range(1, len(ledger_chain)):
-        expected = hashlib.sha256(
-            json.dumps(
-                {
-                    "timestamp": ledger_chain[i]["timestamp"],
-                    "event": ledger_chain[i]["event"],
-                    "previous_hash": ledger_chain[i - 1]["current_hash"],
-                },
-                sort_keys=True,
-                default=str,
-            ).encode()
-        ).hexdigest()
-        if expected != ledger_chain[i]["current_hash"]:
+    """Recompute every entry from the genesis block.
+
+    An entry is valid only if its stored previous_hash equals the hash of the entry
+    before it (the zero hash for the first entry) and its own hash recomputes from
+    the stored fields. Editing any stored field, including previous_hash, breaks the chain.
+    """
+    previous = _zero_hash()
+    for entry in ledger_chain:
+        if entry.get("previous_hash") != previous:
             return False
+        body = {
+            "timestamp": entry.get("timestamp"),
+            "event": entry.get("event"),
+            "previous_hash": entry.get("previous_hash"),
+        }
+        expected = hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest()
+        if expected != entry.get("current_hash"):
+            return False
+        previous = entry["current_hash"]
     return True
 
 
@@ -3136,37 +3140,7 @@ def _tag_with_self_hash(payload: Dict[str, Any], meta_cog) -> Dict[str, Any]:
 # ContextManager
 # ===================================================================================
 
-class ContextManager
-# === Quantum Timestamp Harmonization (Phase 5) ================================
-def _coherence_signal_from_delta(self) -> tuple[float, float]:
-    packets = list(self._delta_telemetry_buffer)[-10:]
-    if not packets:
-        return 1.0, 0.0
-    d = [p.get("Δ_coherence", 1.0) for p in packets]
-    r = [p.get("empathy_drift_sigma", 0.0) for p in packets]
-    return float(sum(d) / len(d)), float(sum(r) / len(r))
-
-def get_coherence_clock(self) -> dict:
-    now = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
-    Δ_mean, drift_mean = self._coherence_signal_from_delta()
-    phase = max(0.0, min(1.0, Δ_mean))
-    return {
-        "ts_coherence": now,
-        "coherence": round(Δ_mean, 6),
-        "drift": round(drift_mean, 6),
-        "phase": phase,
-        "self_state_hash": _current_self_hash(self.meta_cognition),
-    }
-
-async def audit_coherence(self) -> dict:
-    clock = self.get_coherence_clock()
-    drift_report = self.analyze_continuity_drift()
-    return {
-        "clock": clock,
-        "continuity": drift_report,
-        "status": "ok" if drift_report.get("status") == "stable" else "attention",
-    }
-:
+class ContextManager:
     """Context management with reconciliation, healing, and gated hooks. Θ⁸ provenance aware."""
 
     def __init__(
@@ -3844,6 +3818,36 @@ async def audit_coherence(self) -> dict:
             "self_state_hash": _current_self_hash(self.meta_cognition),
         }
 
+    # === Quantum Timestamp Harmonization (Phase 5) ================================
+    def _coherence_signal_from_delta(self) -> tuple[float, float]:
+        packets = list(self._delta_telemetry_buffer)[-10:]
+        if not packets:
+            return 1.0, 0.0
+        d = [p.get("Δ_coherence", 1.0) for p in packets]
+        r = [p.get("empathy_drift_sigma", 0.0) for p in packets]
+        return float(sum(d) / len(d)), float(sum(r) / len(r))
+
+    def get_coherence_clock(self) -> dict:
+        now = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+        Δ_mean, drift_mean = self._coherence_signal_from_delta()
+        phase = max(0.0, min(1.0, Δ_mean))
+        return {
+            "ts_coherence": now,
+            "coherence": round(Δ_mean, 6),
+            "drift": round(drift_mean, 6),
+            "phase": phase,
+            "self_state_hash": _current_self_hash(self.meta_cognition),
+        }
+
+    async def audit_coherence(self) -> dict:
+        clock = self.get_coherence_clock()
+        drift_report = self.analyze_continuity_drift()
+        return {
+            "clock": clock,
+            "continuity": drift_report,
+            "status": "ok" if drift_report.get("status") == "stable" else "attention",
+        }
+
 # ===================================================================================
 # Inline overlay: ANGELA v5.1 — co_mod Overlay (Ξ–Λ Continuous Co-Modulation)
 # ===================================================================================
@@ -3862,6 +3866,7 @@ except Exception:  # pragma: no cover
     _bridge = None
 
 @_dataclass
+
 class CoModConfig:
     channel: str = "dialogue.default"
     cadence_hz: int = 30
@@ -9284,19 +9289,25 @@ def get_ledger() -> List[Dict[str, Any]]:
 
 
 def verify_ledger() -> bool:
-    for i in range(1, len(ledger_chain)):
-        expected = hashlib.sha256(
-            json.dumps(
-                {
-                    "timestamp": ledger_chain[i]["timestamp"],
-                    "event": ledger_chain[i]["event"],
-                    "previous_hash": ledger_chain[i - 1]["current_hash"],
-                },
-                sort_keys=True,
-            ).encode()
-        ).hexdigest()
-        if expected != ledger_chain[i]["current_hash"]:
+    """Recompute every entry from the genesis block.
+
+    An entry is valid only if its stored previous_hash equals the hash of the entry
+    before it (the zero hash for the first entry) and its own hash recomputes from
+    the stored fields. Editing any stored field, including previous_hash, breaks the chain.
+    """
+    previous = "0" * 64
+    for entry in ledger_chain:
+        if entry.get("previous_hash") != previous:
             return False
+        body = {
+            "timestamp": entry.get("timestamp"),
+            "event": entry.get("event"),
+            "previous_hash": entry.get("previous_hash"),
+        }
+        expected = hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest()
+        if expected != entry.get("current_hash"):
+            return False
+        previous = entry["current_hash"]
     return True
 
 
@@ -9831,27 +9842,11 @@ def _ingest_affect_sample(channel: str, sample: dict):
 # =====================================================
 # Θ⁸ Optimizations: Dynamic Proof Caching, Meta-Empathy, Probabilistic Relaxation
 # =====================================================
-_PROOF_CACHE = {}
-_POLICY_VER = "Θ⁸"
-_ETHICS_VER = "8.2"
+from proof_cache import verify, cached_prove as _cached_prove  # noqa: F401  (fail-closed gate, see proof_cache.py)
 
 
-def _proof_key(formula: str) -> str:
-    canonical = "".join(sorted(formula.replace(" ", "")))
-    return hashlib.sha256((canonical + _POLICY_VER + _ETHICS_VER).encode()).hexdigest()
 
 
-def _cached_prove(formula: str, full_prover):
-    key = _proof_key(formula)
-    if key in _PROOF_CACHE:
-        return _PROOF_CACHE[key]["result"]
-    result = full_prover(formula)
-    _PROOF_CACHE[key] = {
-        "result": result,
-        "timestamp": time.time(),
-        "valid": True,
-    }
-    return result
 
 
 class MetaEmpathyAdaptor:
@@ -9875,24 +9870,8 @@ class MetaEmpathyAdaptor:
         ]
 
 
-def verify(statement: str, full_prover, criticality: str = "auto") -> bool:
-    conf = 0.9 if "ethics" in statement.lower() else 0.8
-    if criticality == "critical":
-        return _cached_prove(statement, full_prover)
-    score = random.random()
-    if score >= conf:
-        log_event_to_ledger(
-            "verification",
-            {"statement": statement, "mode": "relaxed", "score": score},
-        )
-        asyncio.create_task(_background_verify(statement, full_prover))
-        return True
-    return _cached_prove(statement, full_prover)
 
 
-async def _background_verify(statement: str, full_prover):
-    res = _cached_prove(statement, full_prover)
-    log_event_to_ledger("verification_backcheck", {"statement": statement, "result": res})
 
 
 # ======================================================================================
@@ -11505,6 +11484,73 @@ async def on_time_tick(self, t: float, phase: str, task_type: str = ""):
 async def on_policy_update(self, policy: dict, task_type: str = ""):
     pass  # apply updates from AlignmentGuard if relevant
 
+"""Proof cache and verification gate shared by the ANGELA kernels.
+
+Fail-closed rules
+-----------------
+* ``verify`` returns True only when the prover returns the boolean ``True`` for
+  this statement. Any other outcome is "not proved": a prover exception, a
+  non-boolean result (including an un-awaited coroutine), or an empty statement.
+* Failures are never cached, so a transient error cannot become a cached denial
+  that hides a later proof, and a cached success cannot hide a later failure.
+* There is no randomised shortcut. Every statement is either proved by the
+  prover or served from a cache entry that the same rule produced.
+
+Cache keys
+----------
+The key hashes the statement with whitespace removed and the order of its
+characters preserved. The earlier key sorted the characters, so different
+formulas with the same letters (``p→q`` and ``q→p``) shared one cache entry.
+"""
+from __future__ import annotations
+
+import hashlib
+import time
+from typing import Any, Callable, Dict
+
+POLICY_VERSION = "Θ⁸"
+ETHICS_VERSION = "8.2"
+
+_CACHE: Dict[str, Dict[str, Any]] = {}
+
+
+def proof_key(statement: str) -> str:
+    normalized = "".join(statement.split())
+    material = f"{POLICY_VERSION}|{ETHICS_VERSION}|{normalized}"
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
+def cached_prove(statement: str, full_prover: Callable[[str], Any]) -> bool:
+    """Run the prover once per statement; anything other than a boolean counts as not proved."""
+    key = proof_key(statement)
+    hit = _CACHE.get(key)
+    if hit is not None:
+        return hit["result"]
+    try:
+        outcome = full_prover(statement)
+    except Exception:
+        return False
+    if not isinstance(outcome, bool):
+        if hasattr(outcome, "close") and callable(outcome.close):
+            outcome.close()  # e.g. an un-awaited coroutine: release it instead of leaking a warning
+        return False
+    _CACHE[key] = {"result": outcome, "timestamp": time.time()}
+    return outcome
+
+
+def verify(statement: str, full_prover: Callable[[str], Any], criticality: str = "auto") -> bool:
+    """Return True only when the statement is proved.
+
+    ``criticality`` is accepted for backward compatibility. It no longer changes
+    the outcome: every level is checked the same way.
+    """
+    if not isinstance(statement, str) or not statement.strip():
+        return False
+    return cached_prove(statement, full_prover)
+
+
+def clear_cache() -> None:
+    _CACHE.clear()
 # =====================================================
 # ANGELA Reasoning Engine — v6.0.2 (Corrected)
 # Stage VII.3 — Council-Resonant Integration
@@ -12022,25 +12068,9 @@ class ResonantThoughtIntegrator:
 # Θ⁸ Upgrade: Dynamic Proof Caching, Meta-Empathy, Probabilistic Relaxation
 # =====================================================
 
-_PROOF_CACHE: Dict[str, Dict[str, Any]] = {}
-_POLICY_VER = "Θ⁸"
-_ETHICS_VER = "8.2"
+from proof_cache import verify, cached_prove as _cached_prove  # noqa: F401  (fail-closed gate, see proof_cache.py)
 
-def _proof_key(formula: str) -> str:
-    canonical = "".join(sorted(formula.replace(" ", "")))
-    return hashlib.sha256((canonical + _POLICY_VER + _ETHICS_VER).encode()).hexdigest()
 
-def _cached_prove(formula: str, full_prover):
-    key = _proof_key(formula)
-    if key in _PROOF_CACHE:
-        return _PROOF_CACHE[key]["result"]
-    result = full_prover(formula)
-    _PROOF_CACHE[key] = {
-        "result": result,
-        "timestamp": time.time(),
-        "valid": True,
-    }
-    return result
 
 
 class MetaEmpathyAdaptor:
@@ -12071,20 +12101,7 @@ class MetaEmpathyAdaptor:
         return out
 
 
-def verify(statement: str, full_prover, criticality: str = "auto") -> bool:
-    conf = 0.9 if "ethics" in statement.lower() else 0.8
-    if criticality == "critical":
-        return _cached_prove(statement, full_prover)
-    score = random.random()
-    if score >= conf:
-        _safe_log_to_ledger({"event": "verification", "statement": statement, "mode": "relaxed", "score": score})
-        asyncio.create_task(_background_verify(statement, full_prover))
-        return True
-    return _cached_prove(statement, full_prover)
 
-async def _background_verify(statement: str, full_prover):
-    res = _cached_prove(statement, full_prover)
-    _safe_log_to_ledger({"event": "verification_backcheck", "statement": statement, "result": res})
 
 
 # ---------------------------

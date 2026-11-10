@@ -79,21 +79,25 @@ def get_ledger() -> List[Dict[str, Any]]:
 
 
 def verify_ledger() -> bool:
-    """Verify integrity of the entire ledger chain."""
-    for i in range(1, len(ledger_chain)):
-        expected = hashlib.sha256(
-            json.dumps(
-                {
-                    "timestamp": ledger_chain[i]["timestamp"],
-                    "event": ledger_chain[i]["event"],
-                    "previous_hash": ledger_chain[i - 1]["current_hash"],
-                },
-                sort_keys=True,
-                default=str,
-            ).encode()
-        ).hexdigest()
-        if expected != ledger_chain[i]["current_hash"]:
+    """Recompute every entry from the genesis block.
+
+    An entry is valid only if its stored previous_hash equals the hash of the entry
+    before it (the zero hash for the first entry) and its own hash recomputes from
+    the stored fields. Editing any stored field, including previous_hash, breaks the chain.
+    """
+    previous = _zero_hash()
+    for entry in ledger_chain:
+        if entry.get("previous_hash") != previous:
             return False
+        body = {
+            "timestamp": entry.get("timestamp"),
+            "event": entry.get("event"),
+            "previous_hash": entry.get("previous_hash"),
+        }
+        expected = hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest()
+        if expected != entry.get("current_hash"):
+            return False
+        previous = entry["current_hash"]
     return True
 
 
